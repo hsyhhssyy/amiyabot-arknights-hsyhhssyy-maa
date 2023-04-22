@@ -7,9 +7,9 @@ from core.database.plugin import PluginConfiguration
 
 fields = {
     'id':  AutoField(),
-    'user_id': CharField(),
-    'token': CharField(null=True),
-    'sercrt': CharField()
+    'uuid': CharField(),
+    'signature': CharField(),
+    'user_id': CharField(null=True)
 }
 
 

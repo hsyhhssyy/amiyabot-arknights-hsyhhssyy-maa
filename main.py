@@ -7,6 +7,7 @@ from core.customPluginInstance import AmiyaBotPluginInstance
 
 from .server import server_api
 from .utils.string_operation import extract_json
+from .server.database import AmiyaBotMAAConnectionModel
 
 curr_dir = os.path.dirname(__file__)
 
@@ -38,13 +39,14 @@ async def maa_start(data: Message):
 
 
 @bot.on_message(keywords=['记录MAA密钥'], level=5)
-async def maa_start(data: Message):
-    
-    json = extract_json(data.text)
-    
+async def maa_start(data: Message):    
+    json = extract_json(data.text)    
     if json is None:
         return Chain(data,at=False).text('博士，连接密钥格式不正确，请您重新检查后再发哟。')
 
-    
+    if "signature" in json.keys():
+        signature = json["signature"]
+        # 判断该Signature是否未绑定，如果未绑定则进行绑定
+        AmiyaBotMAAConnectionModel.select()
 
     return Chain(data,at=False).text(f'博士，连接密钥阿米娅记下了。')
