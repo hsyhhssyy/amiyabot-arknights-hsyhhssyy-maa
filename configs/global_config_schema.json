@@ -7,6 +7,11 @@
         "title":"连接地址",
         "description":"外网能够访问到本兔兔实例的协议，地址以及端口。一般来说，和填在AmiyaBot控制台的地方的内容一样。例如：http://127.0.0.1:8888",
         "type": "string"
+      },
+      "show_log": {
+        "title":"调试日志",
+        "description":"开启后将写入用于调试的大量日志。",
+        "type": "boolean"
       }
     }
   }
