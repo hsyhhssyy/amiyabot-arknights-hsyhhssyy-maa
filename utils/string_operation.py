@@ -26,6 +26,11 @@ def extract_json(string: str) -> List[Dict[str, Any]]:
 
     return json_objects
 
+def loads_or_none(str:str):
+    try:
+        return json.loads(str)
+    except:
+        return None
 
 # input_string = "博士：兔兔你好。{\"reply\": \"你好博士。\", \"mental\": \"\", \"activity\": \"\"}"
 

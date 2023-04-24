@@ -3,31 +3,33 @@ import re
 import uuid
 import json
 
-from amiyabot import Message, Chain
+from datetime import datetime
 
+from amiyabot import Message, Chain
 
 from core.customPluginInstance import AmiyaBotPluginInstance
 
 from .server import server_api
-from .utils.string_operation import extract_json
+from .utils.string_operation import extract_json, loads_or_none
 from .utils.logger import log
-from .server.database import AmiyaBotMAAConnectionModel
+from .server.database import AmiyaBotMAAConnection, AmiyaBotMAATask
 from .server.check_password import is_strong_password
 
 curr_dir = os.path.dirname(__file__)
 
 global_switch = True
 
+
 class MaaAdapterPluginInstance(AmiyaBotPluginInstance):
     def install(self):
-        AmiyaBotMAAConnectionModel.create_table(safe=True)
+        AmiyaBotMAAConnection.create_table(safe=True)
+        AmiyaBotMAATask.create_table(safe=True)
         log.bot = self
-        
+
         if not is_strong_password():
             global global_switch
             global_switch = False
             log.info("警告：您的服务器秘钥设置的过于简单，出于安全考虑，不允许使用MAA连接器功能，请您修改您config/server.yaml中的连接秘钥，使其包含至少一个大写字母，一个小写字母，一个数字和一个特殊符号（!@#$%^&*(),.?:{}|<>）。")
-    
 
 
 bot = MaaAdapterPluginInstance(
@@ -38,82 +40,190 @@ bot = MaaAdapterPluginInstance(
     description='用于对接MAA',
     document=f'{curr_dir}/README.md',
     global_config_default=f'{curr_dir}/configs/global_config_default.json',
-    global_config_schema=f'{curr_dir}/configs/global_config_schema.json', 
+    global_config_schema=f'{curr_dir}/configs/global_config_schema.json',
 
 )
+
 
 @bot.on_message(keywords=['查看MAA连接地址'], level=5)
 async def maa_start(data: Message):
 
     if not global_switch:
-        return Chain(data,at=False).text('博士，该功能未开启。')
-    
+        return Chain(data, at=False).text('博士，该功能未开启。')
+
     conn_str = bot.get_config("connection_string")
 
     if conn_str is None or conn_str == "":
-        return Chain(data,at=False).text('博士，兔兔没有设置连接地址哦。')
-    return Chain(data,at=False).text(f'博士，连接地址是：{conn_str}')
+        return Chain(data, at=False).text('博士，兔兔没有设置连接地址哦。')
+    return Chain(data, at=False).text(f'博士，连接地址是：{conn_str}')
 
 
 @bot.on_message(keywords=['记录MAA密钥'], level=5)
-async def maa_start(data: Message):    
+async def maa_start(data: Message):
 
     if not global_switch:
-        return Chain(data,at=False).text('博士，该功能未开启。')
+        return Chain(data, at=False).text('博士，该功能未开启。')
 
-    jsons = extract_json(data.text)    
-    if jsons is None or len(jsons)==0:
-        return Chain(data,at=False).text('博士，连接密钥格式不正确，请您重新检查后再发哟。')
+    jsons = extract_json(data.text)
+    if jsons is None or len(jsons) == 0:
+        return Chain(data, at=False).text('博士，连接密钥格式不正确，请您重新检查后再发哟。')
 
     json = jsons[0]
 
     if "signature" in json.keys():
         signature = json["signature"]
         # 判断该Signature是否未绑定，如果未绑定则进行绑定
-        conn = AmiyaBotMAAConnectionModel.get_or_none(AmiyaBotMAAConnectionModel.signature == signature)
+        conn = AmiyaBotMAAConnection.get_or_none(
+            AmiyaBotMAAConnection.signature == signature)
 
         if conn == None:
-            return Chain(data,at=False).text('博士，连接密钥格不匹配，请您重新检查后再发哟。')
-        
+            return Chain(data, at=False).text('博士，连接密钥格不匹配，请您重新检查后再发哟。')
+
         if conn.user_id is not None:
-            return Chain(data,at=False).text('博士，该连接秘钥已经被绑定到其他用户上了哦。')
-        
-        conn = AmiyaBotMAAConnectionModel.delete.where(AmiyaBotMAAConnectionModel.user_id == data.user_id).execute()
+            return Chain(data, at=False).text('博士，该连接秘钥已经被绑定到其他用户上了哦。')
+
+        AmiyaBotMAAConnection.delete().where(
+            AmiyaBotMAAConnection.user_id == data.user_id).execute()
 
         conn.user_id = data.user_id
         conn.save()
 
-    return Chain(data,at=False).text(f'博士，连接密钥阿米娅记下了。')
+    return Chain(data, at=False).text(f'博士，连接密钥阿米娅记下了。')
+
 
 @bot.on_message(keywords=['MAA刷'], level=5)
 async def maa_fight(data: Message):
 
     if not global_switch:
-        return Chain(data,at=False).text('博士，该功能未开启。')
+        return Chain(data, at=False).text('博士，该功能未开启。')
 
-    conn = AmiyaBotMAAConnectionModel.get_or_none(AmiyaBotMAAConnectionModel.user_id == data.user_id)
-
+    conn = AmiyaBotMAAConnection.get_or_none(
+        AmiyaBotMAAConnection.user_id == data.user_id)
+    
     if conn is None:
         return Chain(data).text('博士，您还没有绑定连接秘钥。')
     
-    if conn.task is not None and conn.task != "":
-        return Chain(data).text('博士，上一个任务还在执行中。')
+    pattern = r"MAA刷(\d+)[把|次|关]([\s\S]*)"
+
+    match = re.search(pattern, data.text_original)
+    if match:
+        num_of_times = match.group(1)
+        stages = match.group(2)
+        AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type="Fight",
+                                parameter=json.dumps({
+                                    "stage": stages,
+                                    "times": int(num_of_times)
+                                }), status="ASSIGNED",create_at = datetime.now())
+        return Chain(data).text(f'博士，进行{num_of_times}次{stages}的战斗任务已经布置下去了，干员们会努力完成的。')
+
+    return Chain(data).text(f'博士，您布置的任务阿米娅不明白。')
+
+@bot.on_message(keywords=['MAA自动公招'], level=5)
+async def maa_fight(data: Message):
+
+    if not global_switch:
+        return Chain(data, at=False).text('博士，该功能未开启。')
+
+    conn = AmiyaBotMAAConnection.get_or_none(
+        AmiyaBotMAAConnection.user_id == data.user_id)
     
-    task = {
-        "task_list":[
-            {
-                "uuid":str(uuid.uuid4()),
-                "type":"Fight",
-                "parameter": json.dumps({
-                    "stage":"1-7",
-                    "times":1
-                })
-            }
-        ]
-    }
+    if conn is None:
+        return Chain(data).text('博士，您还没有绑定连接秘钥。')
 
-    conn.task = json.dumps(task)
-    conn.save()
 
-    return Chain(data).text('博士，任务已经下发。')
+    AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type="Recruit",
+                            parameter=json.dumps({
+                                "refresh": True,
+                                "select": [3,4,5],
+                                "confirm": [3,4,5],
+                                "times": 4,
+                                # "set_time": False,
+                                # "expedite": False,
+                                # "expedite_times": 0,
+                                "skip_robot": False,
+                                "recruitment_time":{
+                                    "3":540,
+                                    "4":540,
+                                    "5":540,
+                                }
+                            }), status="ASSIGNED",create_at = datetime.now())    
+
+    return Chain(data).text(f'博士，您布置的任务阿米娅不明白。')
+
+@bot.on_message(keywords=['一键长草'], level=5)
+async def maa_fight(data: Message):
+
+    if not global_switch:
+        return Chain(data, at=False).text('博士，该功能未开启。')
+
+    conn:AmiyaBotMAAConnection = AmiyaBotMAAConnection.get_or_none(
+        AmiyaBotMAAConnection.user_id == data.user_id)
+    
+    if conn is None:
+        return Chain(data).text('博士，您还没有绑定连接秘钥。')
+    
+    
+    if conn.gui_json is None or conn.gui_json == "":
+        return Chain(data).text('博士，我还没有接收到来自您指挥终端的连接。')
+
+    # 分析gui_json
+
+    gui_json_obj:dict = loads_or_none(conn.gui_json)
+
+    if gui_json_obj is None:
+        log.info("gui.json的格式不正确，请检查您的maa的配置。")
+        return Chain(data).text('博士，到指挥终端的连接不稳定，无法执行您的请求。')
+
+    # 针对一键长草的每一个任务，添加一个task
+
+    if gui_json_obj.get("TaskQueue.\u5F00\u59CB\u5524\u9192.IsChecked",None) == "True":
+        #开始唤醒
+        AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type="StartUp",
+                                parameter=None, status="ASSIGNED",create_at = datetime.now())
+
+
+    if gui_json_obj.get("TaskQueue.\u81EA\u52A8\u516C\u62DB.IsChecked",None) == "True":
+        #开始唤醒
+        select_list = []
+        if bool(gui_json_obj.get("AutoRecruit.ChooseLevel3",False)) == True:
+            select_list.append(3)
+        if bool(gui_json_obj.get("AutoRecruit.ChooseLevel4",False)) == True:
+            select_list.append(4)
+        if bool(gui_json_obj.get("AutoRecruit.ChooseLevel5",False)) == True:
+            select_list.append(5)
+               
+
+        AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type="Recruit",
+                                parameter=json.dumps({
+                                    "refresh": bool(gui_json_obj.get("AutoRecruit.RefreshLevel3",False)),
+                                    "select": select_list,
+                                    "confirm": select_list,
+                                    "times":int(gui_json_obj.get("AutoRecruit.MaxTimes",0)),
+                                    # "set_time": False,
+                                    # "expedite": False,
+                                    # "expedite_times": 0,
+                                    "skip_robot": bool(gui_json_obj.get("AutoRecruit.NotChooseLevel1",False)),
+                                    "recruitment_time":{
+                                        "3":300 if bool(gui_json_obj.get("AutoRecruit.IsLevel3UseShortTime",False)) else 540,
+                                        "4":540,
+                                        "5":540,
+                                    }
+                                }), status="ASSIGNED",create_at = datetime.now())
+
+    if gui_json_obj.get("TaskQueue.\u5237\u7406\u667A.IsChecked",None) == "True": 
+        AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type="Fight",
+                                parameter=json.dumps({
+                                    "stage": gui_json_obj.get("MainFunction.Stage1",False),
+                                    "times": 0
+                                }), status="ASSIGNED",create_at = datetime.now())
+
+    if gui_json_obj.get("TaskQueue.\u9886\u53D6\u65E5\u5E38\u5956\u52B1.IsChecked",None) == "True": 
+        AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type="Award",
+                                parameter=None, status="ASSIGNED",create_at = datetime.now())
+
+    return Chain(data).text(f'博士，任务已经布置下去了，干员们会努力做好罗德岛的日常工作的。')
+
+    
+
+    
 

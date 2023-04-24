@@ -1,31 +1,33 @@
 from datetime import datetime
 
-from peewee import AutoField,CharField,IntegerField,DateTimeField
+from peewee import AutoField,CharField,TextField,DateTimeField
 
 from amiyabot.database import ModelClass
 
-from core import log
-from core.database.plugin import PluginConfiguration
+from core.database.plugin import PluginConfiguration,db
 
-fields = {
-    'id':  AutoField(),
-    'uuid': CharField(),
-    'secret': CharField(),
-    'signature': CharField(),
-    'user_id': CharField(null=True),
-    'gui_json': CharField(null=True),
-    'task': CharField(null=True)
+class AmiyaBotMAAConnection(ModelClass):
+    id: int = AutoField()
+    uuid: str = CharField()
+    secret: str = CharField()
+    signature: str = CharField()
+    user_id: str = CharField(null=True)
+    gui_json: str = TextField(null=True)
 
-}
+    class Meta:
+        database = db
+        table_name = "amiyabot-maa-connection"
 
-def create_new_model(name, fields, base_model, table_name):
-    # old_fields = base_model._meta.fields
-    model_attrs = {k: v for k, v in fields.items()}
-    model_attrs['Meta'] = type(
-        'Meta', (), {'database': base_model._meta.database, 'table_name': table_name})
-    new_model = type(name, (ModelClass,), model_attrs)
-    return new_model
+class AmiyaBotMAATask(ModelClass):
+    id: int = AutoField()
+    connection: str = CharField()
+    uuid: str = CharField()
+    type: str = CharField()
+    parameter: str = TextField(null=True)
+    status: str = CharField(null=True)
+    create_at: datetime = DateTimeField(null=True)
+    update_at: datetime = DateTimeField(null=True)
 
-
-AmiyaBotMAAConnectionModel = create_new_model(
-    'AmiyaBotMAAConnection', fields, PluginConfiguration,'amiyabot-maa-connection')
+    class Meta:
+        database = db
+        table_name = "amiyabot-maa-task"
