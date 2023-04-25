@@ -16,7 +16,7 @@
 2. 然后，然后就完事了，剩下的就交给兔兔。
 3. 有条件的话，建议最好去Github上下载被控端exe并放到群文件里，因为Github有些地方的人可能打不开。
 
-![被控端下载地址](https://github.com/hsyhhssyy/amiyabot-maa-adapter/releases/tag/v.0.0.3)
+ [被控端下载地址](https://github.com/hsyhhssyy/amiyabot-maa-adapter/releases/tag/v.0.0.3)
 
 我是兔兔的群友
 
@@ -26,7 +26,7 @@
 4. 联系兔兔的管理员，管他要连接地址，填到第二步连接地址文本框里，或者如果管理员配置了兔兔，在群聊中说`兔兔查看MAA连接地址`，兔兔会回复你。
 3. 按下生成密钥按钮，然后复制密钥文本框里的密钥，然后到群里，说`兔兔记录MAA密钥<密钥内容>`让兔兔记住密钥。不必担心其他人看到密钥，他们就算复制了这个密钥也没用。
 
-    ![记住密钥](https://raw.githubusercontent.com/hsyhhssyy/amiyabot-arknights-hsyhhssyy-maa/master/docs/remember_secret.png)
+    ![记住密钥](https://raw.githubusercontent.com/hsyhhssyy/amiyabot-arknights-hsyhhssyy-maa/master/docs/remember_secret.jpg)
 
 4. 接下来就是挂机，然后去群聊里和兔兔聊天吧。记得停止MAA的任务，本程序不能和MAA同时开启并控制同一个模拟器。如果你更换了兔兔链接地址，记得重新生成密钥并发给兔兔。
 
