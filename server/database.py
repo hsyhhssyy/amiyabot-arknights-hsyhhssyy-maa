@@ -4,7 +4,7 @@ from peewee import AutoField,CharField,TextField,DateTimeField
 
 from amiyabot.database import ModelClass
 
-from core.database.plugin import PluginConfiguration,db
+from core.database.plugin import db
 
 class AmiyaBotMAAConnection(ModelClass):
     id: int = AutoField()
@@ -25,6 +25,7 @@ class AmiyaBotMAATask(ModelClass):
     type: str = CharField()
     parameter: str = TextField(null=True)
     status: str = CharField(null=True)
+    payload: str = TextField(null=True)
     create_at: datetime = DateTimeField(null=True)
     update_at: datetime = DateTimeField(null=True)
 

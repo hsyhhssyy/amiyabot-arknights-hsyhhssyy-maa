@@ -1,6 +1,6 @@
 import base64
 import hmac
-import json
+import os
 
 from peewee import SelectQuery
 from datetime import datetime
@@ -38,7 +38,6 @@ class ReportStatusModel(AuthModel):
 class GuiJsonModel(AuthModel):
     gui_json: str
 
-
 def validate_signature(model: AuthModel):
 
     connection = AmiyaBotMAAConnection.get_or_none(
@@ -49,7 +48,7 @@ def validate_signature(model: AuthModel):
 
     password = get_password().encode()
 
-    log.info(f'{password},{connection.secret}')
+    log.info(f'token verify:{connection.secret}')
 
     signature = hmac.new(password, connection.secret.encode(),
                          digestmod="SHA256").digest()
@@ -61,6 +60,14 @@ def validate_signature(model: AuthModel):
     return connection
 
 
+external_adapters = {}
+
+
+curr_dir = os.path.dirname(__file__)
+screenshot_dir = f"{curr_dir}/../../../resource/maa-adapter/screenshots"
+if not os.path.exists(screenshot_dir):
+    os.makedirs(screenshot_dir)
+
 @app.controller
 class Maa:
     @app.route(method='post')
@@ -68,7 +75,7 @@ class Maa:
 
         password = get_password().encode()
 
-        log.info(f'Token Aquire: {password},{data.secret}')
+        log.info(f'Token Aquire: {data.secret}')
 
         signature = hmac.new(password, data.secret.encode(),
                              digestmod="SHA256").digest()
@@ -123,7 +130,7 @@ class Maa:
         if connection is None:
             return app.response("invalid signature", 401)
 
-        task = AmiyaBotMAATask.get_or_none(
+        task : AmiyaBotMAATask = AmiyaBotMAATask.get_or_none(
             AmiyaBotMAATask.uuid == data.task, AmiyaBotMAATask.connection == connection.id)
 
         if task is None:
@@ -131,6 +138,13 @@ class Maa:
 
         task.status = data.status
         task.update_at = datetime.now()
+
+        if task.type == "CaptureImage" or task.type == "CaptureImageNow":
+            with open(f'{screenshot_dir}/{task.uuid}.png', 'wb') as f:
+                f.write(base64.b64decode(data.payload))
+            task.payload = f'{screenshot_dir}/{task.uuid}.png'
+            log.info(f'{task.payload}')
+
         task.save()
 
         return app.response({"success": True})
