@@ -2,7 +2,7 @@ import sys
 import os
 import re
 
-amiya_bot_plugin_path = "/mnt/amiya-bot/plugins"
+amiya_bot_plugin_path = "/mnt/amiya-bot/2912336120/plugins"
 
 if len(sys.argv)<2:
     print("请使用build或者test命令")
