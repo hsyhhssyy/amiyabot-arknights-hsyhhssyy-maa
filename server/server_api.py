@@ -15,7 +15,7 @@ from ..server.check_password import get_password
 
 from .database import AmiyaBotMAAConnection, AmiyaBotMAATask
 
-app.set_allow_path(['/maa/token', '/maa/getTask',
+app.set_allow_path(['/maa/token','/maa/login', '/maa/getTask',
                    '/maa/reportStatus', '/maa/guiJson'])
 
 
@@ -99,6 +99,15 @@ class Maa:
         )
 
         return app.response({"success": True, "code": signature_encoded})
+
+    @app.route(method='post')
+    async def login(self, data: AuthModel):
+
+        connection = validate_signature(data)
+        if connection is None:
+            return app.response("invalid signature", 401)
+
+        return app.response({"success": True})
 
     @app.route(method='post')
     async def get_task(self, data: AuthModel):

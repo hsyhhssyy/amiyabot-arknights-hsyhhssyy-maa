@@ -2,9 +2,26 @@ import sys
 import os
 import re
 
-amiya_bot_plugin_path = "/mnt/amiya-bot/2912336120/plugins"
 
-if len(sys.argv)<2:
+if len(sys.argv) < 3:
+    print("请使用build或者test命令，然后输入一个数字参数")
+    exit()
+
+amiya_bot_plugin_paths = [
+    "/mnt/amiya-bot/2912336120/plugins",
+    "/mnt/amiya-bot/2604475967/plugins"
+]
+
+command = sys.argv[1]
+index = int(sys.argv[2])-1
+
+if index >= len(amiya_bot_plugin_paths):
+    print("请输入正确的数字参数，范围为1到{}".format(len(amiya_bot_plugin_paths)))
+    exit()
+
+amiya_bot_plugin_path = amiya_bot_plugin_paths[index]
+
+if command != "build" and command != "test":
     print("请使用build或者test命令")
     exit()
 
@@ -42,10 +59,8 @@ if not version_match or not plugin_id_match:
 version = version_match.group(1)
 plugin_id = plugin_id_match.group(1)
 
-cmd = sys.argv[1]
-
-if cmd=="build":
-    os.system(f'sudo rm {plugin_id}-*.zip')
+if command=="build":
+    os.system(f'rm {plugin_id}-*.zip')
     os.system(f'zip -q -r {plugin_id}-{version}.zip *')
 else:
     os.system(f'sudo rm {plugin_id}-*.zip')
@@ -57,7 +72,13 @@ else:
     # os.system(f'docker restart amiya-bot')
 
     # 下面这句是在kubernetes下，重新创建指定dep下的所有pod
-    app_name = "amiya-bot"
+    app_names = [
+        "amiya-bot-1-deployment",
+        "amiya-bot-2-deployment"
+    ]
+
+    app_name = app_names[index]
+
     namespace_name = "amiya-bot"
 
     # 获取指定Deployment的所有Pod
