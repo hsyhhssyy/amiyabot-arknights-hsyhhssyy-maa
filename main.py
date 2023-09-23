@@ -41,7 +41,7 @@ class MaaAdapterPluginInstance(AmiyaBotPluginInstance):
 
 bot = MaaAdapterPluginInstance(
     name='MAA对接器',
-    version='1.3',
+    version='2.0',
     plugin_id='amiyabot-arknights-hsyhhssyy-maa',
     plugin_type='',
     description='用于对接MAA',
