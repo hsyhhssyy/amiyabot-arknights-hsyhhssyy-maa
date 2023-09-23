@@ -2,28 +2,37 @@ import sys
 import os
 import re
 
-
-if len(sys.argv) < 3:
-    print("请使用build或者test命令，然后输入一个数字参数")
-    exit()
-
 amiya_bot_plugin_paths = [
     "/mnt/amiya-bot/2912336120/plugins",
     "/mnt/amiya-bot/2604475967/plugins"
 ]
 
 command = sys.argv[1]
-index = int(sys.argv[2])-1
-
-if index >= len(amiya_bot_plugin_paths):
-    print("请输入正确的数字参数，范围为1到{}".format(len(amiya_bot_plugin_paths)))
-    exit()
-
-amiya_bot_plugin_path = amiya_bot_plugin_paths[index]
 
 if command != "build" and command != "test":
     print("请使用build或者test命令")
     exit()
+
+
+if command == "test":
+    if len(sys.argv) < 3:
+        print("请使用test命令，然后输入一个数字参数")
+        exit()
+
+    amiya_bot_plugin_paths = [
+        "/mnt/amiya-bot/2912336120/plugins",
+        "/mnt/amiya-bot/2604475967/plugins"
+    ]
+
+    index = int(sys.argv[2])-1
+
+    if index >= len(amiya_bot_plugin_paths):
+        print("请输入正确的数字参数，范围为1到{}".format(len(amiya_bot_plugin_paths)))
+        exit()
+
+    amiya_bot_plugin_path = amiya_bot_plugin_paths[index]
+else:
+    amiya_bot_plugin_path = None
 
 def read_file(file_name):
     # 获取当前脚本所在的目录

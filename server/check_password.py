@@ -8,6 +8,11 @@ def is_strong_password():
 
     password = serve_conf.authKey
 
+    if password is None:
+        return False
+    
+    password = f'{password}'
+
     if len(password) < 8:
         return False
     if not re.search(r'[A-Z]', password):

@@ -1,9 +1,8 @@
-import base64
-import hmac
 import os
+import base64
 
 from peewee import SelectQuery
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from core import app
 
@@ -15,50 +14,16 @@ from ..server.check_password import get_password
 
 from .database import AmiyaBotMAAConnection, AmiyaBotMAATask
 
-app.set_allow_path(['/maa/token','/maa/login', '/maa/getTask',
-                   '/maa/reportStatus', '/maa/guiJson'])
-
-
-class GetTokenModel(BaseModel):
-    uuid: str
-    secret: str
-
+app.set_allow_path(['/maa/reportStatus','/maa/getTask'])
 
 class AuthModel(BaseModel):
-    signature: str
-    uuid: str
-
+    user: str
+    device: str
 
 class ReportStatusModel(AuthModel):
     status: str
     task: str
     payload: str
-
-
-class GuiJsonModel(AuthModel):
-    gui_json: str
-
-def validate_signature(model: AuthModel):
-
-    connection = AmiyaBotMAAConnection.get_or_none(
-        AmiyaBotMAAConnection.uuid == model.uuid)
-
-    if connection is None:
-        return None
-
-    password = get_password().encode()
-
-    log.info(f'token verify:{connection.secret}')
-
-    signature = hmac.new(password, connection.secret.encode(),
-                         digestmod="SHA256").digest()
-    signature_encoded = base64.urlsafe_b64encode(
-        signature).decode().rstrip("=")
-
-    if model.signature != signature_encoded:
-        return None
-    return connection
-
 
 external_adapters = {}
 
@@ -71,73 +36,41 @@ if not os.path.exists(screenshot_dir):
 @app.controller
 class Maa:
     @app.route(method='post')
-    async def token(self, data: GetTokenModel):
-
-        password = get_password().encode()
-
-        log.info(f'Token Aquire: {data.secret}')
-
-        signature = hmac.new(password, data.secret.encode(),
-                             digestmod="SHA256").digest()
-        signature_encoded = base64.urlsafe_b64encode(
-            signature).decode().rstrip("=")
-
-        conn_check = AmiyaBotMAAConnection.get_or_none(
-            AmiyaBotMAAConnection.uuid == data.uuid)
-        if conn_check is not None:
-            return app.response({"success": False, "reason": "uuid exists"})
-
-        conn_check = AmiyaBotMAAConnection.get_or_none(
-            AmiyaBotMAAConnection.signature == signature_encoded)
-        if conn_check is not None:
-            return app.response({"success": False, "reason": "secret exists"})
-
-        AmiyaBotMAAConnection.create(
-            uuid=data.uuid,
-            secret=data.secret,
-            signature=signature_encoded
-        )
-
-        return app.response({"success": True, "code": signature_encoded})
-
-    @app.route(method='post')
-    async def login(self, data: AuthModel):
-
-        connection = validate_signature(data)
-        if connection is None:
-            return app.response("invalid signature", 401)
-
-        return app.response({"success": True})
-
-    @app.route(method='post')
     async def get_task(self, data: AuthModel):
-        connection = validate_signature(data)
+        connection = AmiyaBotMAAConnection.get_or_none(
+            (AmiyaBotMAAConnection.device_id == data.device)&(AmiyaBotMAAConnection.user_id == data.user))
+
         if connection is None:
-            return app.response("invalid signature", 401)
+            connection = AmiyaBotMAAConnection.create(device_id=data.device,user_id=data.user,validated=False)
+
+        tasks = []
+
+        if connection.validated == False:
+            return app.response({"success": False, "tasks": tasks})
 
         # 查询task
         query: SelectQuery = (AmiyaBotMAATask
                               .select()
                               .where((AmiyaBotMAATask.connection == connection.id)
-                                     & (AmiyaBotMAATask.status == "ASSIGNED")))
-
-        tasks = []
+                                     & (AmiyaBotMAATask.status == "ASSIGNED") & (AmiyaBotMAATask.create_at > datetime.now() - timedelta(minutes=15))))
 
         for task in query:  # type: AmiyaBotMAATask
             task_to_append = {
-                "uuid": task.uuid,
+                "id": task.uuid,
                 "type": task.type,
-                "parameter": task.parameter
+                "params": task.parameter
             }
             tasks.append(task_to_append)
 
-        return app.response({"success": True, "task": tasks})
+        return {"success": True, "tasks": tasks}
 
     @app.route(method='post')
     async def report_status(self, data: ReportStatusModel):
-        connection = validate_signature(data)
-        if connection is None:
-            return app.response("invalid signature", 401)
+        connection = AmiyaBotMAAConnection.get_or_none(
+            (AmiyaBotMAAConnection.device_id == data.device)&(AmiyaBotMAAConnection.user_id == data.user))
+        
+        if connection is None or connection.validated == False:
+            return app.response("invalid uid/did", 401)
 
         task : AmiyaBotMAATask = AmiyaBotMAATask.get_or_none(
             AmiyaBotMAATask.uuid == data.task, AmiyaBotMAATask.connection == connection.id)
@@ -156,15 +89,4 @@ class Maa:
 
         task.save()
 
-        return app.response({"success": True})
-
-    @app.route(method='post')
-    async def gui_json(self, data: GuiJsonModel):
-        connection = validate_signature(data)
-        if connection is None:
-            return app.response("invalid signature", 401)
-
-        connection.gui_json = data.gui_json
-        connection.save()
-
-        return app.response({"success": True})
+        return {"success": True}
