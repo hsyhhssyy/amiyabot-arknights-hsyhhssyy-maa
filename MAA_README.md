@@ -43,9 +43,16 @@ MAA会以1秒的间隔持续轮询这个端点，尝试获取他要执行的任�
         },
         {
             "id": "15be4725-5bd3-443d-8ae3-0a5ae789254c",   //任务的唯一id，字符串类型，在汇报任务时会使用
-            "type": "LinkStart-Recruiting",                 //一键长草->自动公招。立即根据当前配置，执行一键长草中的对应子功能，无视主界面上该功能的勾选框。    
+            "type": "LinkStart",                 //启动一键长草
         },
-
+        {
+            "id": "15be4725-5bd3-443d-8ae3-0a5ae789254c",   //任务的唯一id，字符串类型，在汇报任务时会使用
+            "type": "LinkStart-Recruiting",                 //一键长草的子功能。立即根据当前配置，单独执行一键长草中的对应子功能，无视主界面上该功能的勾选框。这一类Type的可选值为：LinkStart-Base，LinkStart-WakeUp，LinkStart-Combat，LinkStart-Recruiting，LinkStart-Mall，LinkStart-Mission，LinkStart-AutoRoguelike，LinkStart-ReclamationAlgorithm
+        },
+        {
+            "id": "b353c469-b902-4357-bd8f-d133199eea31",   //任务的唯一id，字符串类型，在汇报任务时会使用
+            "type": "Toolbox-GachaOnce",                    //工具箱中的牛牛抽卡任务，该类Type的可选取值为：Toolbox-GachaOnce, Toolbox-GachaTenTimes
+        },
     ],
     ...     // 如果你的这个端点还有其他用途，你可以自行添加可选的返回值，但是MAA只会读取tasks
 }

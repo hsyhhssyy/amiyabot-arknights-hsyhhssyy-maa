@@ -41,7 +41,7 @@ class MaaAdapterPluginInstance(AmiyaBotPluginInstance):
 
 bot = MaaAdapterPluginInstance(
     name='MAA对接器',
-    version='2.0',
+    version='2.1',
     plugin_id='amiyabot-arknights-hsyhhssyy-maa',
     plugin_type='',
     description='用于对接MAA',
@@ -138,20 +138,6 @@ async def maa_fight(data: Message):
                            parameter=None, status="ASSIGNED", create_at=datetime.now())
 
     await data.send(Chain(data).text('博士，指挥终端当前任务结束后将发送截图给您。'))
-
-    wait_snapshot(data,task_uuid)
-
-
-@bot.on_message(keywords=['MAA立即截图'], level=5)
-async def maa_fight(data: Message):
-
-    valid, conn = await get_connection(data)
-    if not valid:
-        return
-
-    task_uuid = str(uuid.uuid4())
-    AmiyaBotMAATask.create(connection=conn.id, uuid=task_uuid, type="CaptureImageNow",
-                           parameter=None, status="ASSIGNED", create_at=datetime.now())
 
     wait_snapshot(data,task_uuid)
 
