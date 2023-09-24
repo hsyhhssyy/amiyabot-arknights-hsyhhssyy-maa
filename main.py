@@ -117,7 +117,7 @@ def wait_snapshot(data,task_uuid):
             task = AmiyaBotMAATask.get(AmiyaBotMAATask.uuid == task_uuid)
             # log.info(f'{task.payload}')
             if task.payload is not None and task.payload != "":
-                await data.send(Chain(data).text('博士，指挥终端返回了如下截图:').image(task.payload))
+                await data.send(Chain(data).text('博士，任务完成了。指挥终端返回了如下截图:').image(task.payload))
                 return
 
     asyncio.create_task(message_loop())
@@ -155,14 +155,13 @@ async def maa_fight(data: Message):
 
     wait_snapshot(data,task_uuid)
 
-@bot.on_message(keywords=['一键长草'], level=5)
-async def maa_fight(data: Message):
-
+async def assign_simple_task_with_snapshot(data,maa_type,mission_str):
+    
     valid, conn = await get_connection(data)
     if not valid:
         return
 
-    AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type="LinkStart",
+    AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type=maa_type,
                                parameter="", status="ASSIGNED", create_at=datetime.now())
 
     snapshot_task_uuid = str(uuid.uuid4())
@@ -171,4 +170,92 @@ async def maa_fight(data: Message):
 
     wait_snapshot(data,snapshot_task_uuid)
 
-    return Chain(data).text(f'博士，一键长草任务已布置，干员们会努力做好罗德岛的日常工作的，任务结束后将发送截图给您。')
+    return Chain(data).text(f'博士，{mission_str}任务已布置，干员们会努力做好罗德岛的日常工作的，任务结束后将发送截图给您。')
+
+@bot.on_message(keywords=['MAA一键长草'], level=5)
+async def maa_fight(data: Message):
+    return await assign_simple_task_with_snapshot(data,"LinkStart","一键长草")
+
+@bot.on_message(keywords=['MAA基建换班'], level=5)
+async def maa_fight(data: Message):
+    return await assign_simple_task_with_snapshot(data,"LinkStart-Base","基建换班")
+
+@bot.on_message(keywords=['MAA开始唤醒'], level=5)
+async def maa_fight(data: Message):
+    return await assign_simple_task_with_snapshot(data,"LinkStart-WakeUp","开始唤醒")
+
+@bot.on_message(keywords=['MAA刷理智'], level=5)
+async def maa_fight(data: Message):
+    return await assign_simple_task_with_snapshot(data,"LinkStart-Combat","战斗")
+
+@bot.on_message(keywords=['MAA自动公招'], level=999)
+async def maa_fight(data: Message):
+    return await assign_simple_task_with_snapshot(data,"LinkStart-Recruiting","公开招募")
+
+@bot.on_message(keywords=['MAA获取信用及购物'], level=5)
+async def maa_fight(data: Message):
+    return await assign_simple_task_with_snapshot(data,"LinkStart-Mall","购物")
+
+@bot.on_message(keywords=['MAA领取奖励'], level=5)
+async def maa_fight(data: Message):
+    return await assign_simple_task_with_snapshot(data,"LinkStart-Mission","领取奖励")
+
+@bot.on_message(keywords=['MAA自动肉鸽'], level=5)
+async def maa_fight(data: Message):
+    return await assign_simple_task_with_snapshot(data,"LinkStart-AutoRoguelike","集成战略")
+
+@bot.on_message(keywords=['MAA生息演算'], level=5)
+async def maa_fight(data: Message):
+    return await assign_simple_task_with_snapshot(data,"LinkStart-ReclamationAlgorithm","生息演算")
+
+@bot.on_message(keywords=['MAA十连抽'], level=20)
+async def maa_gacha(data: Message):
+
+    valid, conn = await get_connection(data)
+
+    if not valid:
+        return
+
+    confirm = await data.wait(Chain(data).text('博士，阿米娅即将通过指挥终端在当前活动寻访（寻访界面最左侧的寻访）中为您执行寻访十次。（该寻访为真实寻访），请您回复“确认”确认操作。'),
+                              True,30)
+    log.info(f'{confirm} {confirm.text}')
+    if confirm is not None and confirm.text=='确认':
+        await data.send(Chain(data).text('博士，寻访十次任务已经下发'))
+        AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type="Toolbox-GachaTenTimes",
+                            parameter="", status="ASSIGNED", create_at=datetime.now())
+        
+        task_uuid = str(uuid.uuid4())
+        AmiyaBotMAATask.create(connection=conn.id, uuid=task_uuid, type="CaptureImage",
+                            parameter=None, status="ASSIGNED", create_at=datetime.now())
+
+        wait_snapshot(data,task_uuid)
+    else:    
+        await data.send(Chain(data).text('博士，寻访十次任务已取消'))
+    
+    return
+
+@bot.on_message(keywords=['MAA单抽'], level=20)
+async def maa_gacha(data: Message):
+
+    valid, conn = await get_connection(data)
+
+    if not valid:
+        return
+
+    confirm = await data.wait(Chain(data).text('博士，阿米娅即将通过指挥终端在当前活动寻访（寻访界面最左侧的寻访）中为您进行一次寻访。（该寻访为真实寻访），请您回复“确认”确认操作。'),
+                              True,30)
+    log.info(f'{confirm} {confirm.text}')
+    if confirm is not None and confirm.text=='确认':
+        await data.send(Chain(data).text('博士，单次寻访任务已经下发'))
+        AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type="Toolbox-GachaOnce",
+                            parameter="", status="ASSIGNED", create_at=datetime.now())
+        
+        task_uuid = str(uuid.uuid4())
+        AmiyaBotMAATask.create(connection=conn.id, uuid=task_uuid, type="CaptureImage",
+                            parameter=None, status="ASSIGNED", create_at=datetime.now())
+
+        wait_snapshot(data,task_uuid)
+    else:    
+        await data.send(Chain(data).text('博士，单次寻访任务已取消'))
+    
+    return
