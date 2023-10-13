@@ -9,7 +9,7 @@ from datetime import datetime
 from amiyabot import Message, Chain
 
 from core.util import check_file_content
-from core.customPluginInstance import AmiyaBotPluginInstance
+from core import AmiyaBotPluginInstance
 
 from .server import server_api
 from .server.server_api import external_adapters
@@ -41,10 +41,10 @@ class MaaAdapterPluginInstance(AmiyaBotPluginInstance):
 
 bot = MaaAdapterPluginInstance(
     name='MAA对接器',
-    version='2.1',
+    version='2.3',
     plugin_id='amiyabot-arknights-hsyhhssyy-maa',
     plugin_type='',
-    description='用于对接MAA',
+    description='MAA远程控制功能控制端的兔兔实现',
     document=f'{curr_dir}/README.md',
     instruction=f'{curr_dir}/README_USE.md',
     global_config_default=f'{curr_dir}/configs/global_config_default.json',
@@ -62,7 +62,7 @@ async def get_connection(data: Message):
         AmiyaBotMAAConnection.user_id == data.user_id)
 
     if conn is None:
-        await data.send(Chain(data).text('博士，您还没有绑定连接秘钥。'))
+        await data.send(Chain(data).text('博士，您还没有绑定连接秘钥。请发送"兔兔如何连接MAA"查看如何绑定。'))
         return False, None
 
     if conn.validated == False:
@@ -81,9 +81,9 @@ async def maa_start(data: Message):
     conn_str = bot.get_config("connection_string").rstrip("/")
 
     if conn_str is None or conn_str == "":
-        return Chain(data, at=False).text('博士，兔兔没有设置连接地址哦。')
+        return Chain(data, at=False).text('博士，兔兔没有设置连接地址，请联系兔兔管理员。')
     
-    instStr =  f'获取任务端点是： {conn_str}/maa/getTask \n汇报任务端点是： {conn_str}/maa/reportStatus \n特制的Maa.exe下载地址是： https://github.com/hsyhhssyy/amiyabot-arknights-hsyhhssyy-maa/releases/'
+    instStr =  f'获取任务端点是： {conn_str}/maa/getTask \n汇报任务端点是： {conn_str}/maa/reportStatus'
 
     return Chain(data, at=False).markdown(check_file_content(f'{curr_dir}/README_USE.md')).text(instStr)
 
@@ -125,6 +125,29 @@ def wait_snapshot(data,task_uuid):
 def create_my_message_filter_lambda(original_data):
     return lambda data: data.user_id == original_data.user_id
 
+@bot.on_message(keywords=['MAA强制停止'], level=5)
+async def maa_fight(data: Message):
+
+    valid, conn = await get_connection(data)
+
+    if not valid:
+        return
+
+    task_uuid = str(uuid.uuid4())
+    AmiyaBotMAATask.create(connection=conn.id, uuid=task_uuid, type="StopTask",
+                           parameter=None, status="ASSIGNED", create_at=datetime.now())
+
+    async def message_loop():
+        while True:
+            await asyncio.sleep(1)
+            task = AmiyaBotMAATask.get(AmiyaBotMAATask.uuid == task_uuid)
+            # log.info(f'{task.payload}')
+            if task.status == "SUCCESS":
+                await data.send(Chain(data).text(f'博士，当前正在进行的任务已停止。'))
+                return
+
+    asyncio.create_task(message_loop())
+
 @bot.on_message(keywords=['MAA截图'], level=5)
 async def maa_fight(data: Message):
 
@@ -141,14 +164,52 @@ async def maa_fight(data: Message):
 
     wait_snapshot(data,task_uuid)
 
-async def assign_simple_task_with_snapshot(data,maa_type,mission_str):
+@bot.on_message(keywords=['MAA立即截图'], level=5)
+async def maa_fight(data: Message):
+
+    valid, conn = await get_connection(data)
+
+    if not valid:
+        return
+
+    task_uuid = str(uuid.uuid4())
+    AmiyaBotMAATask.create(connection=conn.id, uuid=task_uuid, type="CaptureImageNow",
+                           parameter=None, status="ASSIGNED", create_at=datetime.now())
+
+    wait_snapshot(data,task_uuid)
+
+@bot.on_message(keywords=['MAA当前任务'], level=5)
+async def maa_fight(data: Message):
+
+    valid, conn = await get_connection(data)
+
+    if not valid:
+        return
+
+    task_uuid = str(uuid.uuid4())
+    AmiyaBotMAATask.create(connection=conn.id, uuid=task_uuid, type="HeartBeat",
+                           parameter=None, status="ASSIGNED", create_at=datetime.now())
+
+    async def message_loop():
+        while True:
+            await asyncio.sleep(1)
+            task = AmiyaBotMAATask.get(AmiyaBotMAATask.uuid == task_uuid)
+            # log.info(f'{task.payload}')
+            if task.payload is not None and task.payload != "":
+                currentTask = AmiyaBotMAATask.get(AmiyaBotMAATask.uuid == task.payload)
+                await data.send(Chain(data).text(f'博士，当前正在进行的任务是:{currentTask.type}。'))
+                return
+
+    asyncio.create_task(message_loop())
+
+async def assign_simple_task_with_snapshot(data,maa_type,mission_str,parameter=""):
     
     valid, conn = await get_connection(data)
     if not valid:
         return
 
     AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type=maa_type,
-                               parameter="", status="ASSIGNED", create_at=datetime.now())
+                               parameter=parameter, status="ASSIGNED", create_at=datetime.now())
 
     snapshot_task_uuid = str(uuid.uuid4())
     AmiyaBotMAATask.create(connection=conn.id, uuid=snapshot_task_uuid, type="CaptureImage",
@@ -157,6 +218,17 @@ async def assign_simple_task_with_snapshot(data,maa_type,mission_str):
     wait_snapshot(data,snapshot_task_uuid)
 
     return Chain(data).text(f'博士，{mission_str}任务已布置，干员们会努力做好罗德岛的日常工作的，任务结束后将发送截图给您。')
+
+async def assign_simple_task(data,maa_type,mission_str,parameter=""):
+    
+    valid, conn = await get_connection(data)
+    if not valid:
+        return
+
+    AmiyaBotMAATask.create(connection=conn.id, uuid=str(uuid.uuid4()), type=maa_type,
+                               parameter=parameter, status="ASSIGNED", create_at=datetime.now())
+
+    return Chain(data).text(f'博士，{mission_str}任务已布置，干员们会努力做好罗德岛的日常工作的。')
 
 @bot.on_message(keywords=['MAA一键长草'], level=5)
 async def maa_fight(data: Message):
@@ -245,3 +317,16 @@ async def maa_gacha(data: Message):
         await data.send(Chain(data).text('博士，单次寻访任务已取消'))
     
     return
+
+@bot.on_message(keywords=['MAA切换连接地址'], level=5)
+async def maa_fight(data: Message):
+
+    pattern = r"MAA切换连接地址([\s\S]*)"
+
+    match = re.search(pattern, data.text_original)
+    if match:
+        newStr = match.group(1)
+        return await assign_simple_task(data,"Settings-ConnectAddress","切换连接地址",newStr)
+    else:
+        return Chain(data).text(f'博士，您没有提供连接地址。')
+

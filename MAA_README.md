@@ -43,15 +43,20 @@ MAA会以1秒的间隔持续轮询这个端点，尝试获取他要执行的任�
         },
         {
             "id": "15be4725-5bd3-443d-8ae3-0a5ae789254c",   //任务的唯一id，字符串类型，在汇报任务时会使用
-            "type": "LinkStart",                 //启动一键长草
+            "type": "LinkStart",                            //启动一键长草
         },
         {
             "id": "15be4725-5bd3-443d-8ae3-0a5ae789254c",   //任务的唯一id，字符串类型，在汇报任务时会使用
-            "type": "LinkStart-Recruiting",                 //一键长草的子功能。立即根据当前配置，单独执行一键长草中的对应子功能，无视主界面上该功能的勾选框。这一类Type的可选值为：LinkStart-Base，LinkStart-WakeUp，LinkStart-Combat，LinkStart-Recruiting，LinkStart-Mall，LinkStart-Mission，LinkStart-AutoRoguelike，LinkStart-ReclamationAlgorithm
+            "type": "LinkStart-Recruiting",                 //立即根据当前配置，单独执行一键长草中的对应子功能，无视主界面上该功能的勾选框。这一类Type的可选值详见下述
         },
         {
             "id": "b353c469-b902-4357-bd8f-d133199eea31",   //任务的唯一id，字符串类型，在汇报任务时会使用
             "type": "Toolbox-GachaOnce",                    //工具箱中的牛牛抽卡任务，该类Type的可选取值为：Toolbox-GachaOnce, Toolbox-GachaTenTimes
+        },
+        {
+            "id": "b353c469-b902-4357-bd8f-d133199eea31",   //任务的唯一id，字符串类型，在汇报任务时会使用
+            "type": "Settings-ConnectionAddress",           //修改配置项的任务，等同于执行ConfigurationHelper.SetValue("ConnectionAddress", params); 为了安全起见，不是每个配置都可以修改，能修改的配置详见下述。
+            "params": "value"                               //要修改的值
         },
     ],
     ...     // 如果你的这个端点还有其他用途，你可以自行添加可选的返回值，但是MAA只会读取tasks
@@ -60,6 +65,11 @@ MAA会以1秒的间隔持续轮询这个端点，尝试获取他要执行的任�
 
 这些任务会被按顺序执行，也就是说如果你先发下一个公招任务，再发下一个截图任务，则截图会在公招任务结束后执行。
 该端点应当可以重入并且重复返回需要执行的任务，MAA会自动记录任务Id，对于相同的Id，不会重复执行。
+
+备注:
+- LinkStart-[TaskName]型的任务type的可选值为LinkStart-Base，LinkStart-WakeUp，LinkStart-Combat，LinkStart-Recruiting，LinkStart-Mall，LinkStart-Mission，LinkStart-AutoRoguelike，LinkStart-ReclamationAlgorithm
+- Settings-[SettingsName]型的任务的type的可选值为Settings-ConnectionAddress
+- Settings系列任务仍然是要按顺序执行的，并不会在收到任务的时候立刻执行，而是排在上一个任务的后面。
 
 ## 汇报任务端点
 

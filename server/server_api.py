@@ -86,6 +86,8 @@ class Maa:
                 f.write(base64.b64decode(data.payload))
             task.payload = f'{screenshot_dir}/{task.uuid}.png'
             log.info(f'{task.payload}')
+        else:
+            task.payload = data.payload
 
         task.save()
 
